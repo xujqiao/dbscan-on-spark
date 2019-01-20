@@ -71,7 +71,7 @@ class DBSCAN private (
   type Margins = (DBSCANRectangle, DBSCANRectangle, DBSCANRectangle)
   type ClusterId = (Int, Int)
 
-  def minimumRectangleSize = 2 * eps
+  def minimumRectangleSize: Double = 2 * eps
 
   def labeledPoints: RDD[DBSCANLabeledPoint] = {
     labeledPartitionedPoints.values
@@ -94,7 +94,7 @@ class DBSCAN private (
       .partition(minimumRectanglesWithCount, maxPointsPerPartition, minimumRectangleSize)
 
     logDebug("Found partitions: ")
-    localPartitions.foreach(p => logDebug(p.toString))
+//    localPartitions.foreach(p => logDebug(p.toString))
 
     // grow partitions to include eps
     val localMargins =
@@ -107,7 +107,7 @@ class DBSCAN private (
     // assign each point to its proper partition
     val duplicated = for {
       point <- vectors.map(DBSCANPoint)
-      ((inner, main, outer), id) <- margins.value
+      ((_, _, outer), id) <- margins.value
       if outer.contains(point)
     } yield (id, point)
 
@@ -145,7 +145,7 @@ class DBSCAN private (
         .collect()
 
     // generated adjacency graph
-    val adjacencyGraph = adjacencies.foldLeft(DBSCANGraph[ClusterId]()) {
+    val adjacencyGraph = adjacencies.view.foldLeft(DBSCANGraph[ClusterId]()) {
       case (graph, (from, to)) => graph.connect(from, to)
     }
 
@@ -160,7 +160,7 @@ class DBSCAN private (
         .toList
 
     // assign a global Id to all clusters, where connected clusters get the same id
-    val (total, clusterIdToGlobalId) = localClusterIds.foldLeft((0, Map[ClusterId, Int]())) {
+    val (total, clusterIdToGlobalId) = localClusterIds.view.foldLeft((0, Map[ClusterId, Int]())) {
       case ((id, map), clusterId) => {
 
         map.get(clusterId) match {
@@ -179,7 +179,7 @@ class DBSCAN private (
     }
 
     logDebug("Global Clusters")
-    clusterIdToGlobalId.foreach(e => logDebug(e.toString))
+//    clusterIdToGlobalId.foreach(e => logDebug(e.toString))
     logInfo(s"Total Clusters: ${localClusterIds.size}, Unique: $total")
 
     val clusterIds = vectors.context.broadcast(clusterIdToGlobalId)
@@ -193,7 +193,7 @@ class DBSCAN private (
           case (partition, point) => {
 
             if (point.flag != Flag.Noise) {
-              point.cluster = clusterIds.value((partition, point.cluster))
+              point.cluster = clusterIds.value.getOrElse((partition, point.cluster), 1)
             }
 
             (partition, point)
@@ -208,7 +208,7 @@ class DBSCAN private (
           case (all, (partition, point)) =>
 
             if (point.flag != Flag.Noise) {
-              point.cluster = clusterIds.value((partition, point.cluster))
+              point.cluster = clusterIds.value.getOrElse((partition, point.cluster), 1)
             }
 
             all.get(point) match {

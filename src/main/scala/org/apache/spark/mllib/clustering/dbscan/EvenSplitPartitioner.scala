@@ -55,14 +55,14 @@ class EvenSplitPartitioner(
     logTrace("Done")
 
     // remove empty partitions
-    partitions.filter({ case (partition, count) => count > 0 })
+    partitions.filter({ case (_, count) => count > 0 })
   }
 
   @tailrec
   private def partition(
     remaining: List[RectangleWithCount],
     partitioned: List[RectangleWithCount],
-    pointsIn: (DBSCANRectangle) => Int): List[RectangleWithCount] = {
+    pointsIn: DBSCANRectangle => Int): List[RectangleWithCount] = {
 
     remaining match {
       case (rectangle, count) :: rest =>
@@ -94,7 +94,7 @@ class EvenSplitPartitioner(
 
   def split(
     rectangle: DBSCANRectangle,
-    cost: (DBSCANRectangle) => Int): (DBSCANRectangle, DBSCANRectangle) = {
+    cost: DBSCANRectangle => Int): (DBSCANRectangle, DBSCANRectangle) = {
 
     val smallestSplit =
       findPossibleSplits(rectangle)
@@ -109,7 +109,7 @@ class EvenSplitPartitioner(
 
         }
 
-    (smallestSplit, (complement(smallestSplit, rectangle)))
+    (smallestSplit, complement(smallestSplit, rectangle))
 
   }
 
@@ -155,8 +155,8 @@ class EvenSplitPartitioner(
    * Returns true if the given rectangle can be split into at least two rectangles of minimum size
    */
   private def canBeSplit(box: DBSCANRectangle): Boolean = {
-    (box.x2 - box.x > minimumRectangleSize * 2 ||
-      box.y2 - box.y > minimumRectangleSize * 2)
+    box.x2 - box.x > minimumRectangleSize * 2 ||
+      box.y2 - box.y > minimumRectangleSize * 2
   }
 
   def pointsInRectangle(space: Set[RectangleWithCount], rectangle: DBSCANRectangle): Int = {
